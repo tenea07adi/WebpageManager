@@ -1,3 +1,7 @@
+using CommonAbstraction.Repository;
+using DataAccessLayer.DbRepository.Generics;
+using DatabaseLayer.DatabaseConnection;
+using Microsoft.EntityFrameworkCore;
 
 namespace API
 {
@@ -13,6 +17,12 @@ namespace API
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddDbContext<DataBaseContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("MainDbContext")));
+
+            //builder.Services.AddScoped<IMyDependency, MyDependency>();
+            builder.Services.AddScoped(typeof(IGenericRepo<>), typeof(GenericRepo<>));
 
             var app = builder.Build();
 
