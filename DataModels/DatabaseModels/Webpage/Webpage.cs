@@ -2,10 +2,8 @@
 
 namespace DataModels.DatabaseModels.Webpage
 {
-    public class Webpage : BaseStorageModel
+    public class Webpage : BaseProtectedStorageModel
     {
-        public int UserId { get; set; }
-
         public string Name { get; set; }
 
         public string Description { get; set; }

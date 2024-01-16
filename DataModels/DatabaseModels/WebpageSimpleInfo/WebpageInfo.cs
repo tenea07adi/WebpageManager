@@ -2,7 +2,7 @@
 
 namespace DataModels.DatabaseModels.WebpageSimpleInfo
 {
-    public class WebpageInfo : BaseStorageModel
+    public class WebpageInfo : BaseWebpageOwnStorageModel
     {
         public int CollectionId { get; set; }
         public string Info { get; set; }

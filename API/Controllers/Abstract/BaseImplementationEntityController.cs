@@ -1,6 +1,8 @@
-﻿using CommonAbstraction.DataModels;
+﻿using API.ActionFilters;
+using CommonAbstraction.DataModels;
 using CommonAbstraction.Repository;
 using CommonLogic.DataModelsMapper;
+using DataModels.UtilityModels.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,6 +24,7 @@ namespace API.Controllers.Abstract
             this._genericRepo = genericRepo;
         }
 
+        [AuthActionFilter(UserSecurityPass.PassRole.User)]
         public override IActionResult Add(TAddDTO record)
         {
             TDatabaseModel mappedRecord = new TDatabaseModel();
@@ -33,6 +36,7 @@ namespace API.Controllers.Abstract
             return Ok(record);
         }
 
+        [AuthActionFilter(UserSecurityPass.PassRole.User)]
         public override IActionResult Delete(int id)
         {
             _genericRepo.Delete(id);
@@ -40,6 +44,7 @@ namespace API.Controllers.Abstract
             return Ok();
         }
 
+        [AuthActionFilter(UserSecurityPass.PassRole.Webpage)]
         public override IActionResult Get()
         {
             List<TDatabaseModel> databaseModels = new List<TDatabaseModel>();
@@ -56,6 +61,7 @@ namespace API.Controllers.Abstract
             return Ok(getDTOs);
         }
 
+        [AuthActionFilter(UserSecurityPass.PassRole.Webpage)]
         public override IActionResult Get(int id)
         {
             TGetDTO getDTO = new TGetDTO();
@@ -68,6 +74,7 @@ namespace API.Controllers.Abstract
             return Ok(getDTO);
         }
 
+        [AuthActionFilter(UserSecurityPass.PassRole.User)]
         public override IActionResult Update(int id, TUpdateDTO record)
         {
             TDatabaseModel mappedRecord = null;
