@@ -1,9 +1,10 @@
-﻿using DataModels.DatabaseModels.Webpage;
+﻿using CommonAbstraction.DataModels;
+using DataModels.DatabaseModels.Webpage;
 using DataModels.StorageModels.Auth;
 
 namespace DataModels.UtilityModels.Security
 {
-    public class UserSecurityPass
+    public class UserSecurityPass : BaseUtilityModel
     {
         public enum PassRole  { Unauthorized, Webpage, User, Admin }
 

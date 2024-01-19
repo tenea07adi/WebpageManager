@@ -2,7 +2,7 @@
 using CommonAbstraction.Repository;
 using DataModels.DatabaseModels.Webpage;
 using DataModels.DataTransferObjects.Webpage;
-using Microsoft.AspNetCore.Http;
+using DataModels.UtilityModels.Security;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers
@@ -11,8 +11,8 @@ namespace API.Controllers
     [ApiController]
     public class WebpageController : BaseImplementationEntityController<WebpageUpsertDTO, WebpageUpsertDTO, WebpageRespDTO, Webpage>
     {
-        private readonly IGenericRepo<Webpage> _webpageRepo;
-        public WebpageController(IGenericRepo<Webpage> webpageRepo) : base(webpageRepo)
+        private readonly IGenericProtectedRepo<Webpage, UserSecurityPass> _webpageRepo;
+        public WebpageController(IGenericProtectedRepo<Webpage, UserSecurityPass> webpageRepo) : base(webpageRepo)
         {
             _webpageRepo = webpageRepo;
         }

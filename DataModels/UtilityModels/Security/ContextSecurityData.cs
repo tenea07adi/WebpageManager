@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CommonAbstraction.DataModels;
 
 namespace DataModels.UtilityModels.Security
 {
-    public class ContextSecurityData
+    public class ContextSecurityData : BaseUtilityModel
     {
         public string AuthenticationToken { get; set; }
         public string RequesterHttpDomain { get; set; }

@@ -10,10 +10,11 @@ namespace CommonLogic.BusinessLogic
 {
     public static class AuthLogic
     {
-        public static AuthenticationToken GenerateAuthenticationToken()
+        public static AuthenticationToken GenerateAuthenticationToken(int userId)
         {
             AuthenticationToken authenticationToken = new AuthenticationToken()
             {
+                UserId = userId,
                 AccessToken = CryptographyHelper.GenerateRandomString(10),
                 RefreashToken = CryptographyHelper.GenerateRandomString(10),
                 AccessTokenExpirationMoment = DateTime.Now.AddDays(1),
@@ -34,15 +35,10 @@ namespace CommonLogic.BusinessLogic
             return securityData;
         }
 
-        public static UserSecurityPass GenerateUserSecurityPass(IGenericRepo<User> userRepo, IGenericRepo<Webpage> webpageRepo, IGenericRepo<AuthenticationToken> tokenRepo, ContextSecurityData contextSecurityData)
+        public static UserSecurityPass GenerateUserSecurityPass(IGenericRepo<Webpage> webpageRepo, IGenericRepo<User> userRepo, IGenericRepo<AuthenticationToken> tokenRepo, ContextSecurityData contextSecurityData)
         {
             User user = GetUserByAuthenticationToken(userRepo, tokenRepo, contextSecurityData.AuthenticationToken);
             Webpage webpage = GetWebpageByDomain(webpageRepo, contextSecurityData.RequesterHttpDomain);
-
-            if(webpage == null && user == null)
-            {
-                return null;
-            }
 
             UserSecurityPass userSecurityPass = new UserSecurityPass()
             {
@@ -55,9 +51,17 @@ namespace CommonLogic.BusinessLogic
 
         public static User GetUserByAuthenticationToken(IGenericRepo<User> userRepo, IGenericRepo<AuthenticationToken> tokenRepo, string token)
         {
-            int userId = tokenRepo.Get().Where(c => c.AccessToken == token).FirstOrDefault().UserId;
 
-            if(userId == null) 
+            AuthenticationToken t = tokenRepo.Get().Where(c => c.AccessToken == token).FirstOrDefault();
+
+            if (!IsValidAuthenticationToken(t))
+            {
+                return null;
+            }
+
+            int userId = t.UserId;
+
+            if (userId == 0) 
             {
                 return null;
             }
@@ -84,5 +88,24 @@ namespace CommonLogic.BusinessLogic
             return webpage;
         }
     
+        public static bool IsValidAuthenticationToken(AuthenticationToken token)
+        {
+            if(token == null)
+            {
+                return false;
+            }
+
+            if(token.AccessToken == null || token.AccessToken == String.Empty) 
+            {
+                return false;
+            }
+
+            if(token.AccessTokenExpirationMoment <= DateTime.Now) 
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 }

@@ -23,6 +23,7 @@ namespace API
 
             //builder.Services.AddScoped<IMyDependency, MyDependency>();
             builder.Services.AddScoped(typeof(IGenericRepo<>), typeof(GenericRepo<>));
+            builder.Services.AddScoped(typeof(IGenericProtectedRepo<,>), typeof(GenericProtectedRepo<,>));
 
             var app = builder.Build();
 

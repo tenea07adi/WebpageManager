@@ -84,7 +84,7 @@ namespace API.Controllers
 
             if (CryptographyHelper.IsCorrectPassword(logInData.Password, user.PasswordHash, user.PasswordSalt))
             {
-                AuthenticationToken newAuthenticationToken = AuthLogic.GenerateAuthenticationToken();
+                AuthenticationToken newAuthenticationToken = AuthLogic.GenerateAuthenticationToken(user.Id);
 
                 _authTokenRepo.Add(newAuthenticationToken);
 

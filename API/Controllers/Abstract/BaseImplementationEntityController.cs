@@ -1,9 +1,11 @@
 ﻿using API.ActionFilters;
 using CommonAbstraction.DataModels;
 using CommonAbstraction.Repository;
+using CommonLogic.BusinessLogic;
 using CommonLogic.DataModelsMapper;
+using DataModels.DatabaseModels.Webpage;
+using DataModels.StorageModels.Auth;
 using DataModels.UtilityModels.Security;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers.Abstract
@@ -17,9 +19,9 @@ namespace API.Controllers.Abstract
         where TDatabaseModel : BaseStorageModel, new()
     {
 
-        private readonly IGenericRepo<TDatabaseModel> _genericRepo;
+        private readonly IGenericProtectedRepo<TDatabaseModel, UserSecurityPass> _genericRepo;
 
-        public BaseImplementationEntityController(IGenericRepo<TDatabaseModel> genericRepo)
+        public BaseImplementationEntityController(IGenericProtectedRepo<TDatabaseModel, UserSecurityPass> genericRepo)
         {
             this._genericRepo = genericRepo;
         }
@@ -31,7 +33,7 @@ namespace API.Controllers.Abstract
 
             DataModelsMapper.Mapp(record, mappedRecord);
 
-            _genericRepo.Add(mappedRecord);
+            _genericRepo.Add(mappedRecord, GenerateSecurityPass());
 
             return Ok(record);
         }
@@ -39,7 +41,7 @@ namespace API.Controllers.Abstract
         [AuthActionFilter(UserSecurityPass.PassRole.User)]
         public override IActionResult Delete(int id)
         {
-            _genericRepo.Delete(id);
+            _genericRepo.Delete(id, GenerateSecurityPass());
 
             return Ok();
         }
@@ -50,7 +52,7 @@ namespace API.Controllers.Abstract
             List<TDatabaseModel> databaseModels = new List<TDatabaseModel>();
             List<TGetDTO> getDTOs = new List<TGetDTO>();
 
-            databaseModels = _genericRepo.Get();
+            databaseModels = _genericRepo.Get(GenerateSecurityPass());
 
             for(int i = 0; i <databaseModels.Count; i ++)
             {
@@ -67,7 +69,12 @@ namespace API.Controllers.Abstract
             TGetDTO getDTO = new TGetDTO();
             TDatabaseModel databaseModel = null;
 
-            databaseModel = _genericRepo.Get(id);
+            databaseModel = _genericRepo.Get(id, GenerateSecurityPass());
+
+            if(databaseModel == null)
+            {
+                return BadRequest("Not fount or not authorized!");
+            }
 
             DataModelsMapper.Mapp(databaseModel, getDTO);
 
@@ -83,9 +90,18 @@ namespace API.Controllers.Abstract
 
             DataModelsMapper.Mapp(record, mappedRecord);
 
-            _genericRepo.Update(mappedRecord);
+            _genericRepo.Update(mappedRecord, GenerateSecurityPass());
 
             return Ok(record);
+        }
+
+        protected UserSecurityPass GenerateSecurityPass()
+        {
+            IGenericRepo<User> usersRepo = HttpContext.RequestServices.GetService<IGenericRepo<User>>();
+            IGenericRepo<Webpage> webpageRepo = HttpContext.RequestServices.GetService<IGenericRepo<Webpage>>();
+            IGenericRepo<AuthenticationToken> tokenRepo = HttpContext.RequestServices.GetService<IGenericRepo<AuthenticationToken>>();
+
+            return AuthLogic.GenerateUserSecurityPass(webpageRepo, usersRepo, tokenRepo, AuthLogic.GetContextSecurityData(HttpContext));
         }
     }
 }

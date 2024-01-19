@@ -30,15 +30,16 @@ namespace API.ActionFilters
             IGenericRepo<Webpage> webpageRepo = context.HttpContext.RequestServices.GetService<IGenericRepo<Webpage>>();
             IGenericRepo<AuthenticationToken> tokenRepo = context.HttpContext.RequestServices.GetService<IGenericRepo<AuthenticationToken>>();
 
-            UserSecurityPass securityPass = AuthLogic.GenerateUserSecurityPass(usersRepo, webpageRepo, tokenRepo, contextSecurityData);
+            UserSecurityPass securityPass = AuthLogic.GenerateUserSecurityPass(webpageRepo, usersRepo, tokenRepo, contextSecurityData);
 
-            if (securityPass != null && securityPass.Role >= _role )
+            if ( securityPass.Role >= _role )
             {
-                context.Result = new EmptyResult();
+                base.OnActionExecuting(context);
             }
             else
             {
-                base.OnActionExecuting(context);
+                context.HttpContext.Response.StatusCode = 401;
+                context.Result = new UnauthorizedObjectResult("Unauthorized!");//new EmptyResult();
             }
         }
 

@@ -11,6 +11,11 @@ namespace CommonLogic.DataModelsMapper
 
         private static TDestinationObj AutoMapp<TSourceObj, TDestinationObj>(TSourceObj sourceObj, TDestinationObj destinationObj)
         {
+            if(sourceObj == null || destinationObj == null)
+            {
+                return default(TDestinationObj);
+            }
+
             foreach (var sourceProp in sourceObj.GetType().GetProperties())
             {
                 PropertyInfo destinationProp = typeof(TDestinationObj).GetProperty(sourceProp.Name);
