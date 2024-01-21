@@ -4,6 +4,7 @@ using CommonAbstraction.Repository;
 using CommonLogic.BusinessLogic;
 using CommonLogic.DataModelsMapper;
 using DataModels.DatabaseModels.Webpage;
+using DataModels.DataTransferObjects.WebpageSimpleInfo;
 using DataModels.StorageModels.Auth;
 using DataModels.UtilityModels.Security;
 using Microsoft.AspNetCore.Mvc;
@@ -18,8 +19,11 @@ namespace API.Controllers.Abstract
         where TGetDTO : class, new()
         where TDatabaseModel : BaseStorageModel, new()
     {
+        protected enum Endpoint { Add, Update, Delete, Get, GetAll};
 
         private readonly IGenericProtectedRepo<TDatabaseModel, UserSecurityPass> _genericRepo;
+
+        private Dictionary<Endpoint, Func<TDatabaseModel, bool>> _additionalChecks = new Dictionary<Endpoint, Func<TDatabaseModel, bool>>();
 
         public BaseImplementationEntityController(IGenericProtectedRepo<TDatabaseModel, UserSecurityPass> genericRepo)
         {
@@ -29,18 +33,40 @@ namespace API.Controllers.Abstract
         [AuthActionFilter(UserSecurityPass.PassRole.User)]
         public override IActionResult Add(TAddDTO record)
         {
+
             TDatabaseModel mappedRecord = new TDatabaseModel();
 
             DataModelsMapper.Mapp(record, mappedRecord);
 
+            if (_additionalChecks.ContainsKey(Endpoint.Add) && !_additionalChecks[Endpoint.Add].Invoke(mappedRecord))
+            {
+                return BadRequest("Invalid record!");
+            }
+
             _genericRepo.Add(mappedRecord, GenerateSecurityPass());
 
-            return Ok(record);
+            WebpageInfoCollectionRespDTO resp = new WebpageInfoCollectionRespDTO();
+
+            DataModelsMapper.Mapp(mappedRecord, resp);
+
+            return Ok(resp);
         }
 
         [AuthActionFilter(UserSecurityPass.PassRole.User)]
         public override IActionResult Delete(int id)
         {
+            TDatabaseModel record = _genericRepo.Get(id, GenerateSecurityPass());
+
+            if(record == null)
+            {
+                return NotFound();
+            }
+
+            if (_additionalChecks.ContainsKey(Endpoint.Add) && !_additionalChecks[Endpoint.Add].Invoke(record))
+            {
+                return BadRequest("Invalid record!");
+            }
+
             _genericRepo.Delete(id, GenerateSecurityPass());
 
             return Ok();
@@ -73,7 +99,7 @@ namespace API.Controllers.Abstract
 
             if(databaseModel == null)
             {
-                return BadRequest("Not fount or not authorized!");
+                return NotFound("Not fount or not authorized!");
             }
 
             DataModelsMapper.Mapp(databaseModel, getDTO);
@@ -86,13 +112,35 @@ namespace API.Controllers.Abstract
         {
             TDatabaseModel mappedRecord = null;
 
-            mappedRecord = _genericRepo.Get(id);
+            mappedRecord = _genericRepo.Get(id, GenerateSecurityPass());
+
+            if(mappedRecord == null)
+            {
+                return NotFound();
+            }
 
             DataModelsMapper.Mapp(record, mappedRecord);
+
+            if (_additionalChecks.ContainsKey(Endpoint.Add) && !_additionalChecks[Endpoint.Add].Invoke(_genericRepo.Get(id)))
+            {
+                return BadRequest("Invalid record!");
+            }
 
             _genericRepo.Update(mappedRecord, GenerateSecurityPass());
 
             return Ok(record);
+        }
+
+        protected void AddAdditionalCheck(Endpoint endpoint, Func<TDatabaseModel, bool> func)
+        {
+            if(_additionalChecks.ContainsKey(endpoint))
+            {
+                _additionalChecks[endpoint] = func;
+            }
+            else
+            {
+                _additionalChecks.Add(endpoint, func);
+            }
         }
 
         protected UserSecurityPass GenerateSecurityPass()
