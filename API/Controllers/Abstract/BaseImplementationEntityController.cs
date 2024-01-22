@@ -4,7 +4,6 @@ using CommonAbstraction.Repository;
 using CommonLogic.BusinessLogic;
 using CommonLogic.DataModelsMapper;
 using DataModels.DatabaseModels.Webpage;
-using DataModels.DataTransferObjects.WebpageSimpleInfo;
 using DataModels.StorageModels.Auth;
 using DataModels.UtilityModels.Security;
 using Microsoft.AspNetCore.Mvc;
@@ -45,7 +44,7 @@ namespace API.Controllers.Abstract
 
             _genericRepo.Add(mappedRecord, GenerateSecurityPass());
 
-            WebpageInfoCollectionRespDTO resp = new WebpageInfoCollectionRespDTO();
+            TGetDTO resp = new TGetDTO();
 
             DataModelsMapper.Mapp(mappedRecord, resp);
 

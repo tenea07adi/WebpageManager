@@ -1,5 +1,7 @@
-﻿using API.Controllers.Abstract;
+﻿using API.ActionFilters;
+using API.Controllers.Abstract;
 using CommonAbstraction.Repository;
+using CommonLogic.DataModelsMapper;
 using DataModels.DatabaseModels.Webpage;
 using DataModels.DatabaseModels.WebpageSimpleInfo;
 using DataModels.DataTransferObjects.WebpageSimpleInfo;
@@ -26,6 +28,23 @@ namespace API.Controllers
             _webpageInfoCollectionRepo= webpageInfoCollectionRepo;
 
             AdditionalChecks();
+        }
+
+        [HttpGet("active")]
+        [AuthActionFilter(UserSecurityPass.PassRole.Webpage)]
+        public IActionResult GetActiveInfo()
+        {
+            List<WebpageInfo> dbInfos =  _webpageInfoRepo.Get(GenerateSecurityPass()).Where(info => (info.HaveExpirationMoment == false || info.ExpirationMoment > DateTime.Now) && (info.HaveStartMoment == false || info.StartMoment < DateTime.Now)).ToList();
+
+            List<WebpageInfoRespDTO> resInfos = new List<WebpageInfoRespDTO>();
+
+            for (int i = 0; i < dbInfos.Count; i++)
+            {
+                resInfos.Add(new WebpageInfoRespDTO());
+                DataModelsMapper.Mapp(dbInfos[i], resInfos[i]);
+            }
+
+            return Ok(resInfos);
         }
 
         private void AdditionalChecks()
