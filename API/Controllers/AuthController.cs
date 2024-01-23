@@ -1,10 +1,14 @@
-﻿using CommonAbstraction.Repository;
+﻿using API.ActionFilters;
+using CommonAbstraction.Repository;
 using CommonLogic.BusinessLogic;
 using CommonLogic.DataModelsMapper;
 using CommonLogic.Helpers;
+using DataModels.DatabaseModels.Webpage;
 using DataModels.DataTransferObjects.Auth;
 using DataModels.StorageModels.Auth;
+using DataModels.UtilityModels.Security;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 
 namespace API.Controllers
 {
@@ -14,62 +18,86 @@ namespace API.Controllers
     {
         private readonly IGenericRepo<User> _userRepo;
         private readonly IGenericRepo<AuthenticationToken> _authTokenRepo;
+        private readonly IGenericRepo<RegistrationInvite> _registrationInviteRepo;
 
-        public AuthController(IGenericRepo<User> userRepo, IGenericRepo<AuthenticationToken> authTokenRepo)
+
+        public AuthController(IGenericRepo<User> userRepo, IGenericRepo<AuthenticationToken> authTokenRepo, IGenericRepo<RegistrationInvite> registrationInviteRepo)
         {
             _authTokenRepo = authTokenRepo;
             _userRepo = userRepo;
+            _registrationInviteRepo = registrationInviteRepo;
         }
 
-        [HttpGet("Utility/Init")]
-        public IActionResult InitDefaultUser()
+        [AuthActionFilter(UserSecurityPass.PassRole.Admin)]
+        [HttpPost("User/Invite")]
+        public IActionResult CreateUserInvite(RegistrationInviteUpsertDTO inviteRequest)
         {
-            string defaultUserEmail = "admin@aditenea.net";
-            string defaultUserName = "admin";
-
-            string randomGeneratedPassword = CryptographyHelper.GenerateRandomString(6);
-
-            if (_userRepo.Get().Where(c => c.Email == defaultUserEmail).Any())
+            if (_userRepo.Get().Where(c => c.Email == inviteRequest.Email).FirstOrDefault() != null)
             {
-                return BadRequest("User already initilized!");
+                return BadRequest("User already exist!");
             }
 
-            User defaultUser = new User();
-            defaultUser.Email = defaultUserEmail;
-            defaultUser.DisplayedName = defaultUserName;
-            defaultUser.PasswordSalt = CryptographyHelper.GeneratePasswordSalt();
-            defaultUser.PasswordHash = CryptographyHelper.HashPassword(randomGeneratedPassword, defaultUser.PasswordSalt);
+            UserSecurityPass securityPass = GenerateUserSecurityPass();
 
-            _userRepo.Add(defaultUser);
+            RegistrationInvite registrationInvite = new RegistrationInvite();
 
-            return Ok($"Success! Username: {defaultUser.Email}; Password: {randomGeneratedPassword}");
-        }
+            registrationInvite.Email = inviteRequest.Email;
+            registrationInvite.Message = inviteRequest.Message;
+            registrationInvite.SenderId = securityPass.User.Id;
+            registrationInvite.ExpirationMoment = DateTime.Now.AddDays(7);
+            registrationInvite.RegistrationKey = "";
 
-        [HttpGet("Utility/Cleanup")]
-        public IActionResult CleanUp()
-        {
-            int deletedCount = 0;
-            int totalCount = 0;
-
-            try
+            // generate keys until it is uniqe
+            while (registrationInvite.RegistrationKey == "")
             {
-                List<AuthenticationToken> authenticationTokens = _authTokenRepo.Get().Where(c => c.AccessTokenExpirationMoment < DateTime.Now).ToList();
+                registrationInvite.RegistrationKey = CryptographyHelper.GenerateRandomString(6);
 
-                totalCount = authenticationTokens.Count;
-
-                foreach (var authenticationToken in authenticationTokens)
+                if(_registrationInviteRepo.Get().Where(c => c.RegistrationKey == registrationInvite.RegistrationKey).ToList().Count() > 0)
                 {
-                    _authTokenRepo.Delete(authenticationToken.Id);
-
-                    deletedCount++;
+                    registrationInvite.RegistrationKey = "";
                 }
             }
-            catch (Exception ex)
+
+            _registrationInviteRepo.Add(registrationInvite);
+
+            RegistrationInviteResponseDTO responseDTO = new RegistrationInviteResponseDTO();
+
+            DataModelsMapper.Mapp(registrationInvite, responseDTO);
+
+            return Ok(responseDTO);
+        }
+
+        [HttpPost("User/Register")]
+        public IActionResult Register(UserRegistrationDTO registrationData)
+        {
+            RegistrationInvite dbInvite = _registrationInviteRepo.Get().Where(c => c.RegistrationKey == registrationData.RegistrationKey).FirstOrDefault();
+            
+            if (dbInvite == null)
             {
-                return BadRequest($"Operation finished with error! Records found: {totalCount}, Records deleted: {deletedCount}, Error message: {ex.Message}");
+                return BadRequest("Invite not found!");
             }
 
-            return Ok($"Records found: {totalCount}, Records deleted: {deletedCount}");
+            if(dbInvite.ExpirationMoment < DateTime.Now)
+            {
+                return BadRequest("Invite Expired!");
+            }
+
+            if (_userRepo.Get().Where(c => c.Email == dbInvite.Email).FirstOrDefault() != null)
+            {
+                return BadRequest("User already exist!");
+            }
+
+            User newUser = new User();
+
+            newUser.Email = dbInvite.Email;
+            newUser.DisplayedName = registrationData.DisplayedName;
+            newUser.Role = DataModels.StorageModels.Auth.User.UserRole.User;
+            newUser.PasswordSalt = CryptographyHelper.GeneratePasswordSalt();
+            newUser.PasswordHash = CryptographyHelper.HashPassword(registrationData.Password, newUser.PasswordSalt);
+
+            _userRepo.Add(newUser);
+
+            return Ok("User registered!");
         }
 
         [HttpPost("User/Login")]
@@ -98,12 +126,6 @@ namespace API.Controllers
             return BadRequest();
         }
 
-        [HttpPost("User/Register")]
-        public IActionResult Register(UserRegistrationDTO registrationData)
-        {
-            return BadRequest("Not implemented yet!");
-        }
-
         [HttpPost("AuthenticationToken/Renew")]
         public IActionResult AuthenticationTokenRenew(string authenticationToken)
         {
@@ -116,5 +138,11 @@ namespace API.Controllers
             return BadRequest("Not implemented yet!");
         }
 
+        private UserSecurityPass GenerateUserSecurityPass()
+        {
+            IGenericRepo<Webpage> webpageRepo = HttpContext.RequestServices.GetService<IGenericRepo<Webpage>>();
+
+            return AuthLogic.GenerateUserSecurityPass(webpageRepo, _userRepo, _authTokenRepo, AuthLogic.GetContextSecurityData(HttpContext));
+        }
     }
 }
